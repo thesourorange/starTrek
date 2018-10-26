@@ -111,15 +111,15 @@ class Responder {
         continue next;
       }
 
-      if (item.qY !=  map[iMap].qY) {
+      if (item.qY != map[iMap].qY) {
         continue next;
       }
 
-      if (item.sX !=  map[iMap].sX) {
+      if (item.sX != map[iMap].sX) {
         continue next;
       }
 
-      if (item.sY !=  map[iMap].sY) {
+      if (item.sY != map[iMap].sY) {
         continue next;
       }
 
@@ -131,9 +131,34 @@ class Responder {
 
   }
 
+  checkArtifact(map, item) {
+
+    if (map[item.qY][item.qX] == 9) {
+      return false;
+    }
+
+    map[item.qY][item.qX] += 1;
+
+    return true;
+
+  }
+
   setupMap(starbaseCount, klingonCount) {
     var map = [];
-    
+    var klingons = [];
+
+    for (var iRow = 0; iRow < 8; iRow++) {
+      
+      map.push([]);
+
+      for (var iColumn = 0; iColumn < 8; iColumn++) {
+
+        map[iRow].push(0);
+
+      }
+
+    }
+
     // Enterprise
     map.push(
      {
@@ -144,9 +169,10 @@ class Responder {
         energy: 2000,
         status: 1,
         type: 1,
+        scanned : 1,
         photon: 10,     
         shields: 0
-      });
+    });
     
     var starbase = null;
 
@@ -158,6 +184,7 @@ class Responder {
         sY: Math.floor(Math.random() * 8),
         energy : 2000,
         status: 1,
+        scanned : 0,
         type: 2
       };
   
@@ -174,10 +201,11 @@ class Responder {
           sY: Math.floor(Math.random() * 8),
           energy : Math.floor(Math.random() * 1800) + 100,
           status: 1,
+          scanned : 0,
           type: 3
         };
 
-      } while (this.checkArtifact(map, klingon));
+      } while (this.checkCount(map, klingon) && this.checkArtifact(map, klingon));
 
       map.push(klingon);
       
@@ -194,6 +222,7 @@ class Responder {
           sY: Math.floor(Math.random() * 8),
           energy : Math.floor(Math.random() * 1800) + 100,
           status: 1,
+          scanned : 0,
           type: 4
         };
 
@@ -260,7 +289,7 @@ class Responder {
 
     }
   
-    function produceMap(starMap) {
+    function produceShortRangeMap(starMap) {
       return new Promise((resolve, reject) => {
         var img = PImage.make(320,210);
 
@@ -301,9 +330,10 @@ class Responder {
 
     }
 
-    async function generateMap(starMap) {
+    async function generateShortRangeMap(starMap) {
+     
       try {
-        var srImage = await produceMap(starMap);
+        var srImage = await produceShortRangeMap(starMap);
       } catch (e) {
         console.log(e);
       }
@@ -312,7 +342,7 @@ class Responder {
   
     }
     
-    var srImage = await generateMap(starMap);
+    var srImage = await generateShortRangeMap(starMap);
  
     var enterprise = starMap[0];
     return CardFactory.heroCard(
@@ -323,7 +353,124 @@ class Responder {
     );
         
   }
+
   async showLongRangeSensor(turnContext, starMap) {
+
+    function produceLongRangeMap(starMap) {
+      return new Promise((resolve, reject) => {
+        var img = PImage.make(320,210);
+
+        var fnt = PImage.registerFont('resources/fonts/NovaMono.ttf','NovaMono');
+        fnt.load(() => {
+
+          var sectorMap = getQuandrantMap(starMap);
+   
+          var ctx = img.getContext('2d');
+          ctx.fillStyle = '#00ff00';
+
+          ctx.font = "16pt 'NovaMono'";
+          ctx.fillText("+---+---+---+---+---+---+---+---+", 10, 20);
+ 
+          for (var line = 0; line < sectorMap.length; line++) {
+            ctx.fillText(sectorMap[line], 10, 40 + line*20);
+          }
+
+          ctx.fillText("+---+---+---+---+---+---+---+---+", 10, 200);
+ 
+          var memStream = new MS();
+          var encodedStream = new Base64Encode({prefix:"data:image/jpg;base64,"});
+          memStream.pipe(encodedStream);
+
+          PImage.encodeJPEGToStream(img, memStream).then(() => {
+            
+            memStream.end();
+            
+            toString(encodedStream).then(function (msg) {
+              resolve(msg);
+            });
+
+          });
+
+        });
+
+      });
+    
+    }
+
+    async function generateLongRangeChart(starMap) {
+     
+      try {
+        var srImage = await produceLongRangeMap(starMap);
+      } catch (e) {
+        console.log(e);
+      }
+
+      return srImage;
+  
+    }
+
+    function getQuandrantMap(starMap) {
+      var quadrantMap = [];
+ 
+      for (var row = 0; row < 8; row++) {
+        quadrantMap.push([]);
+        for (var column = 0; column < 8; column++) {
+  
+          quadrantMap[row].push({
+            klingons: 0,
+            starbases : 0,
+            stars : 0,
+            enterprise : 0
+          
+          });
+  
+        }
+  
+      }
+  
+      var enterprise = starMap[0];
+
+      for (var entry = 0; entry < starMap.length; entry++) {
+        console.log('+ ' + JSON.stringify(starMap[entry]));
+
+        var type = starMap[entry].type;
+ 
+        if (type == 1) {
+          quadrantMap[starMap[entry].qY][starMap[entry].qX].enterprise = 1;
+        } else if (type == 2) {
+          quadrantMap[starMap[entry].qY][starMap[entry].qX].starbases += 1;
+        } else if (type == 3) {
+          quadrantMap[starMap[entry].qY][starMap[entry].qX].klingons += 1;
+        } else if (type == 4) {
+          quadrantMap[starMap[entry].qY][starMap[entry].qX].stars += 1;
+        }
+       
+      }
+      
+      var display = [];
+      for (var row = 0; row < 8; row++) {
+        var line = "|"
+        for (var column = 0; column < 8; column++) {
+          if (quadrantMap[row][column]) {
+            line += `${quadrantMap[row][column].stars}${quadrantMap[row][column].klingons}${quadrantMap[row][column].starbases} `;
+          }
+
+        }
+        
+        line = line.replace(/.$/, "|");
+  
+        display.push(line);
+      
+      }
+
+      return display;
+
+    }
+  
+    var enterprise = starMap[0];
+
+    var srImage = await generateLongRangeChart(starMap);
+
     return CardFactory.heroCard(
       `Quadrant: ${enterprise.qX}:${enterprise.qY}, Sector ${enterprise.sX}:${enterprise.sY}`,
       CardFactory.images([`${srImage}`]),

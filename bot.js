@@ -131,9 +131,9 @@ class Responder {
 
   }
 
-  checkArtifact(map, item) {
-
-    if (map[item.qY][item.qX] == 9) {
+  checkQuantity(map, item) {
+    console.log(`${item.qY} : ${item.qX} : ${map[item.qY][item.qX]}`)
+    if (map[item.qY][item.qX] >= 7) {
       return false;
     }
 
@@ -143,9 +143,8 @@ class Responder {
 
   }
 
-  setupMap(starbaseCount, klingonCount) {
+  initMap() {
     var map = [];
-    var klingons = [];
 
     for (var iRow = 0; iRow < 8; iRow++) {
       
@@ -158,6 +157,15 @@ class Responder {
       }
 
     }
+
+    return map;
+    
+  }
+
+  setupMap(starbaseCount, klingonCount) {
+    var map = [];
+    var klingons = this.initMap();
+    var stars = this.initMap();
 
     // Enterprise
     map.push(
@@ -205,7 +213,7 @@ class Responder {
           type: 3
         };
 
-      } while (this.checkCount(map, klingon) && this.checkArtifact(map, klingon));
+      } while (this.checkQuantity(klingons, klingon) && this.checkArtifact(map, klingon));
 
       map.push(klingon);
       
@@ -226,7 +234,7 @@ class Responder {
           type: 4
         };
 
-      } while (this.checkArtifact(map, star));
+      } while (this.checkQuantity(stars, star) && this.checkArtifact(map, star));
 
       map.push(star);
       
